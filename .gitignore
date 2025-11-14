@@ -1,0 +1,12 @@
+.idea
+/venv
+/__pycache__
+*.pyc
+.DS_Store
+.env
+md/
+*.jar
+*.db
+*.sql
+*.pdf
+

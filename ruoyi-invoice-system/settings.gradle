@@ -1,0 +1,6 @@
+rootProject.name = 'ruoyi-invoice-system'
+
+include 'ruoyi-admin'
+include 'ruoyi-common'
+include 'ruoyi-framework'
+include 'ruoyi-system'

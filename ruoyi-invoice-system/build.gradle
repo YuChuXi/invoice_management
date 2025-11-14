@@ -1,0 +1,148 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '2.7.18'
+    id 'io.spring.dependency-management' version '1.1.0'
+}
+
+allprojects {
+    group = 'com.ruoyi'
+    version = '1.0.0'
+    sourceCompatibility = '1.8'
+
+    repositories {
+        maven { url 'https://maven.aliyun.com/repository/public/' }
+        maven { url 'https://repo1.maven.org/maven2/' }
+        mavenLocal()
+        mavenCentral()
+    }
+}
+
+subprojects {
+    apply plugin: 'java'
+    apply plugin: 'org.springframework.boot'
+    apply plugin: 'io.spring.dependency-management'
+
+    dependencies {
+        implementation 'org.springframework.boot:spring-boot-starter'
+        testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    }
+
+    test {
+        useJUnitPlatform()
+    }
+
+    tasks.withType(JavaCompile) {
+        options.encoding = 'UTF-8'
+    }
+}
+
+project(':ruoyi-admin') {
+    dependencies {
+        implementation project(':ruoyi-framework')
+        implementation project(':ruoyi-system')
+        implementation project(':ruoyi-common')
+        
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-security'
+        implementation 'org.apache.shiro:shiro-spring-boot-starter:1.11.0'
+        implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.3.1'
+        implementation 'com.alibaba:druid-spring-boot-starter:1.2.18'
+        implementation 'mysql:mysql-connector-java:8.0.33'
+        implementation 'com.alibaba:fastjson:2.0.39'
+        implementation 'org.apache.poi:poi-ooxml:5.2.3'
+        implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+        implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+    }
+}
+
+project(':ruoyi-system') {
+    dependencies {
+        implementation project(':ruoyi-common')
+        implementation project(':ruoyi-framework')
+        
+        implementation 'org.springframework.boot:spring-boot-starter-web'
+        implementation 'org.springframework.boot:spring-boot-starter-validation'
+        implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.3.1'
+        implementation 'com.alibaba:druid-spring-boot-starter:1.2.18'
+        implementation 'org.apache.shiro:shiro-spring-boot-starter:1.11.0'
+        implementation 'org.apache.poi:poi-ooxml:5.2.3'
+        implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+        implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+        implementation 'org.apache.commons:commons-lang3:3.12.0'
+    }
+}
+
+project(':ruoyi-framework') {
+    dependencies {
+        implementation project(':ruoyi-common')
+        
+        implementation 'org.springframework.boot:spring-boot-starter'
+        implementation 'org.springframework.boot:spring-boot-starter-security'
+        implementation 'org.apache.shiro:shiro-spring-boot-starter:1.11.0'
+        implementation 'com.baomidou:mybatis-plus-boot-starter:3.5.3.1'
+        implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+        implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+    }
+}
+
+project(':ruoyi-common') {
+    dependencies {
+        implementation 'org.springframework.boot:spring-boot-starter'
+        implementation 'org.apache.commons:commons-lang3:3.12.0'
+        implementation 'org.apache.commons:commons-collections4:4.4'
+        implementation 'com.alibaba:fastjson:2.0.39'
+        implementation 'jakarta.validation:jakarta.validation-api:3.0.2'
+        implementation 'org.hibernate.validator:hibernate-validator:8.0.0.Final'
+        implementation 'org.apache.poi:poi-ooxml:5.2.3'
+        implementation 'com.github.pagehelper:pagehelper-spring-boot-starter:1.4.2'
+    }
+}
+
+// 禁用根项目的bootJar和bootRun任务
+bootJar {
+    enabled = false
+}
+
+bootRun {
+    enabled = false
+}
+
+// 只对admin模块应用bootJar和bootRun配置
+project(':ruoyi-admin') {
+    bootJar {
+        mainClass = 'com.ruoyi.RuoYiApplication'
+        enabled = true
+    }
+    
+    bootRun {
+        mainClass = 'com.ruoyi.RuoYiApplication'
+    }
+}
+
+// 其他模块禁用bootJar
+project(':ruoyi-common') {
+    bootJar {
+        enabled = false
+    }
+    jar {
+        enabled = true
+    }
+}
+
+project(':ruoyi-system') {
+    bootJar {
+        enabled = false
+    }
+    jar {
+        enabled = true
+    }
+}
+
+project(':ruoyi-framework') {
+    bootJar {
+        enabled = false
+    }
+    jar {
+        enabled = true
+    }
+}

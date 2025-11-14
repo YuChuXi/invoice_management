@@ -1,0 +1,43 @@
+# RuoYi 发票管理系统 - 环境依赖
+
+## 必需软件
+# Java Development Kit (JDK)
+# 版本: 1.8 或更高
+# 下载: https://www.oracle.com/java/technologies/javase/javase8-archive-downloads.html
+# 或 OpenJDK: https://openjdk.org/
+
+# Gradle
+# 版本: 7.0 或更高
+# 下载: https://gradle.org/releases/
+
+# MySQL Database
+# 版本: 8.0 或更高
+# 下载: https://dev.mysql.com/downloads/mysql/
+
+## 可选软件
+# Redis (用于缓存)
+# 版本: 5.0 或更高
+# 下载: https://redis.io/download/
+
+# Node.js (前端开发)
+# 版本: 16 或更高
+# 下载: https://nodejs.org/
+
+## 开发工具
+# IntelliJ IDEA (推荐)
+# 或 Eclipse
+# 或 VS Code with Java扩展
+
+## 数据库管理工具
+# MySQL Workbench
+# 或 Navicat
+# 或 DBeaver
+
+## API测试工具
+# Postman
+# 或 curl
+
+## 系统要求
+# 操作系统: Windows 10/11, Linux, macOS
+# 内存: 4GB RAM (推荐)
+# 磁盘空间: 1GB 可用空间

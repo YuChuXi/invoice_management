@@ -1,0 +1,948 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>发票管理系统 - 管理员面板</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .sidebar {
+            background: white;
+            min-height: calc(100vh - 56px);
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+        }
+        .sidebar .nav-link {
+            color: #333;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin: 5px 0;
+            transition: all 0.3s;
+        }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .main-content {
+            padding: 20px;
+        }
+        .card {
+            border: none;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+            margin-bottom: 20px;
+        }
+        .card-header {
+            background: white;
+            border-bottom: 2px solid #f0f0f0;
+            border-radius: 15px 15px 0 0 !important;
+            padding: 20px;
+        }
+        .status-badge {
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-approved { background: #d1edff; color: #0c5460; }
+        .status-rejected { background: #f8d7da; color: #721c24; }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .table th {
+            border-top: none;
+            font-weight: 600;
+            color: #495057;
+        }
+        .stats-card {
+            text-align: center;
+            padding: 20px;
+        }
+        .stats-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .stats-label {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">
+                <i class="fas fa-receipt me-2"></i>
+                发票管理系统
+            </a>
+            <div class="navbar-nav ms-auto">
+                <span class="navbar-text me-3">
+                    <i class="fas fa-user me-1"></i>
+                    {{ current_user.username }} (管理员)
+                </span>
+                <a class="btn btn-outline-light btn-sm" href="{{ url_for('logout') }}">
+                    <i class="fas fa-sign-out-alt me-1"></i>退出
+                </a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- 侧边栏 -->
+            <div class="col-md-3 col-lg-2 sidebar">
+                <div class="d-flex flex-column flex-shrink-0 p-3">
+                    <ul class="nav nav-pills flex-column mb-auto">
+                        <li class="nav-item">
+                            <a href="#pending" class="nav-link active" data-bs-toggle="tab">
+                                <i class="fas fa-clock me-2"></i>
+                                待审核
+                                {% if pending_invoices %}
+                                <span class="badge bg-danger ms-2">{{ pending_invoices|length }}</span>
+                                {% endif %}
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#approved" class="nav-link" data-bs-toggle="tab">
+                                <i class="fas fa-check-circle me-2"></i>
+                                已通过
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#rejected" class="nav-link" data-bs-toggle="tab">
+                                <i class="fas fa-times-circle me-2"></i>
+                                已拒绝
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a href="#summary" class="nav-link" data-bs-toggle="tab">
+                                <i class="fas fa-chart-bar me-2"></i>
+                                汇总
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- 主内容区 -->
+            <div class="col-md-9 col-lg-10 main-content">
+                <!-- 统计卡片 -->
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card stats-card">
+                            <div class="stats-number text-warning">{{ pending_invoices|length }}</div>
+                            <div class="stats-label">待审核发票</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stats-card">
+                            <div class="stats-number text-success">{{ approved_invoices|length }}</div>
+                            <div class="stats-label">已通过发票</div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card stats-card">
+                            <div class="stats-number text-danger">{{ rejected_invoices|length }}</div>
+                            <div class="stats-label">已拒绝发票</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content">
+                    <!-- 待审核标签页 -->
+                    <div class="tab-pane fade show active" id="pending">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="mb-0"><i class="fas fa-clock me-2"></i>待审核发票</h4>
+                            </div>
+                            <div class="card-body">
+                                {% if pending_invoices %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>发票号码</th>
+                                                <th>供应商</th>
+                                                <th>购买日期</th>
+                                                <th>金额</th>
+                                                <th>上传者</th>
+                                                <th>上传时间</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for invoice in pending_invoices %}
+                                            <tr>
+                                                <td>{{ invoice.invoice_number }}</td>
+                                                <td>{{ invoice.supplier_name }}</td>
+                                                <td>{{ invoice.purchase_date.strftime('%Y-%m-%d') }}</td>
+                                                <td>¥{{ "%.2f"|format(invoice.amount) }}</td>
+                                                <td>{{ invoice.uploader.username }}</td>
+                                                <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <button class="btn btn-sm btn-outline-success" 
+                                                                onclick="showInvoiceModal({{ invoice.id }}, 'approve')">
+                                                            <i class="fas fa-check me-1"></i>通过
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-danger"
+                                                                onclick="showInvoiceModal({{ invoice.id }}, 'reject')">
+                                                            <i class="fas fa-times me-1"></i>拒绝
+                                                        </button>
+                                                        <button class="btn btn-sm btn-outline-info"
+                                                                onclick="viewInvoiceDetails({{ invoice.id }})">
+                                                            <i class="fas fa-eye me-1"></i>详情
+                                                        </button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-check-circle fa-4x text-success mb-3"></i>
+                                    <h5 class="text-muted">暂无待审核发票</h5>
+                                    <p class="text-muted">所有发票都已处理完成</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 已通过标签页 -->
+                    <div class="tab-pane fade" id="approved">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="mb-0"><i class="fas fa-check-circle me-2"></i>已通过发票</h4>
+                            </div>
+                            <div class="card-body">
+                                {% if approved_invoices %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>发票号码</th>
+                                                <th>供应商</th>
+                                                <th>购买日期</th>
+                                                <th>金额</th>
+                                                <th>上传者</th>
+                                                <th>标签</th>
+                                                <th>报销状态</th>
+                                                <th>审核时间</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for invoice in approved_invoices %}
+                                            <tr>
+                                                <td>{{ invoice.invoice_number }}</td>
+                                                <td>{{ invoice.supplier_name }}</td>
+                                                <td>{{ invoice.purchase_date.strftime('%Y-%m-%d') }}</td>
+                                                <td>¥{{ "%.2f"|format(invoice.amount) }}</td>
+                                                <td>{{ invoice.uploader.username }}</td>
+                                                <td>
+                                                    {% if invoice.tags %}
+                                                    <span class="badge bg-info">{{ invoice.tags }}</span>
+                                                    {% else %}
+                                                    <span class="text-muted">无标签</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    <select class="form-select form-select-sm reimbursement-status" 
+                                                            data-invoice-id="{{ invoice.id }}"
+                                                            style="width: 120px;">
+                                                        <option value="unreimbursed" {% if invoice.reimbursement_status == 'unreimbursed' %}selected{% endif %}>未报销</option>
+                                                        <option value="reimbursed" {% if invoice.reimbursement_status == 'reimbursed' %}selected{% endif %}>已报销</option>
+                                                    </select>
+                                                </td>
+                                                <td>{{ invoice.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-file-invoice fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">暂无已通过发票</h5>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 已拒绝标签页 -->
+                    <div class="tab-pane fade" id="rejected">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="mb-0"><i class="fas fa-times-circle me-2"></i>已拒绝发票</h4>
+                            </div>
+                            <div class="card-body">
+                                {% if rejected_invoices %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>发票号码</th>
+                                                <th>供应商</th>
+                                                <th>购买日期</th>
+                                                <th>金额</th>
+                                                <th>上传者</th>
+                                                <th>拒绝时间</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for invoice in rejected_invoices %}
+                                            <tr>
+                                                <td>{{ invoice.invoice_number }}</td>
+                                                <td>{{ invoice.supplier_name }}</td>
+                                                <td>{{ invoice.purchase_date.strftime('%Y-%m-%d') }}</td>
+                                                <td>¥{{ "%.2f"|format(invoice.amount) }}</td>
+                                                <td>{{ invoice.uploader.username }}</td>
+                                                <td>{{ invoice.updated_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                <td>
+                                                    <button class="btn btn-sm btn-outline-warning"
+                                                            onclick="showInvoiceModal({{ invoice.id }}, 'approve')">
+                                                        <i class="fas fa-redo me-1"></i>重新审核
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-ban fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">暂无已拒绝发票</h5>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 汇总标签页 -->
+                    <div class="tab-pane fade" id="summary">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4 class="mb-0"><i class="fas fa-chart-bar me-2"></i>发票汇总</h4>
+                            </div>
+                            <div class="card-body">
+                                <!-- 筛选表单 -->
+                                <div class="card mb-4">
+                                    <div class="card-body">
+                                        <h5 class="card-title">筛选条件</h5>
+                                        <form id="filterForm">
+                                            <div class="row">
+                                                <div class="col-md-3">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">上传者</label>
+                                                        <select class="form-control" id="filterUploader" name="uploader_id">
+                                                            <option value="all">所有上传者</option>
+                                                            {% for uploader in uploaders %}
+                                                            <option value="{{ uploader.id }}">{{ uploader.username }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">开始日期</label>
+                                                        <input type="date" class="form-control" id="filterStartDate" name="start_date">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">结束日期</label>
+                                                        <input type="date" class="form-control" id="filterEndDate" name="end_date">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">标签</label>
+                                                        <input type="text" class="form-control" id="filterTags" name="tags" placeholder="输入标签">
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-2">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">报销状态</label>
+                                                        <select class="form-control" id="filterReimbursement" name="reimbursement_status">
+                                                            <option value="all">全部</option>
+                                                            <option value="unreimbursed">未报销</option>
+                                                            <option value="reimbursed">已报销</option>
+                                                        </select>
+                                                    </div>
+                                                </div>
+                                                <div class="col-md-1">
+                                                    <div class="mb-3">
+                                                        <label class="form-label">&nbsp;</label>
+                                                        <button type="submit" class="btn btn-primary w-100">
+                                                            <i class="fas fa-filter me-1"></i>筛选
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+
+                                <!-- 汇总表格 -->
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="summaryTable">
+                                        <thead>
+                                            <tr>
+                                                <th>发票号码</th>
+                                                <th>供应商</th>
+                                                <th>购买日期</th>
+                                                <th>金额</th>
+                                                <th>上传者</th>
+                                                <th>标签</th>
+                                                <th>报销状态</th>
+                                                <th>上传时间</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="summaryTableBody">
+                                            {% for invoice in summary_invoices %}
+                                            <tr>
+                                                <td>{{ invoice.invoice_number }}</td>
+                                                <td>{{ invoice.supplier_name }}</td>
+                                                <td>{{ invoice.purchase_date.strftime('%Y-%m-%d') }}</td>
+                                                <td>¥{{ "%.2f"|format(invoice.amount) }}</td>
+                                                <td>{{ invoice.uploader.username }}</td>
+                                                <td>
+                                                    {% if invoice.tags %}
+                                                    <span class="badge bg-info">{{ invoice.tags }}</span>
+                                                    {% else %}
+                                                    <span class="text-muted">无标签</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if invoice.reimbursement_status == 'reimbursed' %}
+                                                    <span class="badge bg-success">已报销</span>
+                                                    {% else %}
+                                                    <span class="badge bg-warning">未报销</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>{{ invoice.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <button class="btn btn-sm btn-outline-info"
+                                                                onclick="viewInvoiceDetails({{ invoice.id }})">
+                                                            <i class="fas fa-eye me-1"></i>详情
+                                                        </button>
+                                                        {% if invoice.file_path or invoice.file_url %}
+                                                        <a href="/download_invoice/{{ invoice.id }}" class="btn btn-sm btn-outline-primary">
+                                                            <i class="fas fa-download me-1"></i>下载
+                                                        </a>
+                                                        {% endif %}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+
+                                {% if not summary_invoices %}
+                                <div class="text-center py-5">
+                                    <i class="fas fa-chart-bar fa-4x text-muted mb-3"></i>
+                                    <h5 class="text-muted">暂无已通过发票</h5>
+                                    <p class="text-muted">请先审核通过一些发票</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 发票审核模态框 -->
+    <div class="modal fade" id="invoiceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalTitle">审核发票</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="reviewForm">
+                        <input type="hidden" id="invoiceId" name="invoice_id">
+                        <input type="hidden" id="actionType" name="action_type">
+                        
+                        <div class="mb-3">
+                            <label class="form-label">标签</label>
+                            <input type="text" class="form-control" id="tags" name="tags" placeholder="请输入标签，多个标签用逗号分隔">
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">报销状态</label>
+                            <select class="form-control" id="reimbursementStatus" name="reimbursement_status">
+                                <option value="unreimbursed">未报销</option>
+                                <option value="reimbursed">已报销</option>
+                            </select>
+                        </div>
+                        
+                        <!-- 拒绝原因输入框，只在拒绝时显示 -->
+                        <div class="mb-3" id="rejectionReasonContainer" style="display: none;">
+                            <label class="form-label">拒绝原因 <span class="text-danger">*</span></label>
+                            <textarea class="form-control" id="rejectionReason" name="rejection_reason" rows="3" 
+                                      placeholder="请填写拒绝原因，这些信息将发送给提交者以便修改后重新提交"></textarea>
+                            <div class="form-text">拒绝原因将发送给提交者，帮助他们了解需要修改的内容</div>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle me-2"></i>
+                            确认操作后，发票状态将立即更新。
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                    <button type="button" class="btn btn-primary" id="confirmAction">确认</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 发票详情模态框 -->
+    <div class="modal fade" id="invoiceDetailModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">发票详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">发票号码</label>
+                                <p class="form-control-plaintext" id="detailInvoiceNumber">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">供应商名称</label>
+                                <p class="form-control-plaintext" id="detailSupplierName">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">购买日期</label>
+                                <p class="form-control-plaintext" id="detailPurchaseDate">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">金额</label>
+                                <p class="form-control-plaintext" id="detailAmount">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">描述</label>
+                        <p class="form-control-plaintext" id="detailDescription">-</p>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">上传者</label>
+                                <p class="form-control-plaintext" id="detailUploader">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">状态</label>
+                                <p class="form-control-plaintext" id="detailStatus">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">报销状态</label>
+                                <p class="form-control-plaintext" id="detailReimbursementStatus">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">标签</label>
+                                <p class="form-control-plaintext" id="detailTags">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 拒绝原因（仅在拒绝状态下显示） -->
+                    <div class="mb-3" id="detailRejectionReasonContainer" style="display: none;">
+                        <label class="form-label fw-bold text-danger">拒绝原因</label>
+                        <div class="alert alert-warning">
+                            <p class="mb-0" id="detailRejectionReason">-</p>
+                        </div>
+                        <div class="form-text">此信息已发送给提交者，帮助他们了解需要修改的内容</div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">创建时间</label>
+                                <p class="form-control-plaintext" id="detailCreatedAt">-</p>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label fw-bold">最后更新</label>
+                                <p class="form-control-plaintext" id="detailUpdatedAt">-</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <a href="#" class="btn btn-primary" id="detailDownloadBtn" style="display: none;">
+                        <i class="fas fa-download me-1"></i>下载PDF
+                    </a>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 消息提示容器 -->
+    <div id="messageContainer" style="position: fixed; top: 80px; right: 20px; z-index: 1050;"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let currentInvoiceModal = null;
+
+        // 显示发票审核模态框
+        function showInvoiceModal(invoiceId, actionType) {
+            const modal = new bootstrap.Modal(document.getElementById('invoiceModal'));
+            const title = document.getElementById('modalTitle');
+            const actionBtn = document.getElementById('confirmAction');
+            const rejectionReasonContainer = document.getElementById('rejectionReasonContainer');
+            const rejectionReason = document.getElementById('rejectionReason');
+            
+            // 重置表单
+            document.getElementById('tags').value = '';
+            document.getElementById('reimbursementStatus').value = 'unreimbursed';
+            rejectionReason.value = '';
+            
+            document.getElementById('invoiceId').value = invoiceId;
+            document.getElementById('actionType').value = actionType;
+            
+            if (actionType === 'approve') {
+                title.textContent = '通过发票';
+                actionBtn.className = 'btn btn-success';
+                actionBtn.textContent = '确认通过';
+                rejectionReasonContainer.style.display = 'none';
+            } else {
+                title.textContent = '拒绝发票';
+                actionBtn.className = 'btn btn-danger';
+                actionBtn.textContent = '确认拒绝';
+                rejectionReasonContainer.style.display = 'block';
+            }
+            
+            currentInvoiceModal = modal;
+            modal.show();
+        }
+
+        // 确认操作
+        document.getElementById('confirmAction').addEventListener('click', function() {
+            const invoiceId = document.getElementById('invoiceId').value;
+            const actionType = document.getElementById('actionType').value;
+            const tags = document.getElementById('tags').value;
+            const reimbursementStatus = document.getElementById('reimbursementStatus').value;
+            const rejectionReason = document.getElementById('rejectionReason').value;
+            
+            const status = actionType === 'approve' ? 'approved' : 'rejected';
+            
+            // 构建请求数据
+            const requestData = {
+                status: status,
+                tags: tags,
+                reimbursement_status: reimbursementStatus
+            };
+            
+            // 如果是拒绝操作，添加拒绝原因
+            if (actionType === 'reject') {
+                if (!rejectionReason.trim()) {
+                    showMessage('请填写拒绝原因', 'error');
+                    return;
+                }
+                requestData.rejection_reason = rejectionReason;
+            }
+            
+            fetch(`/update_invoice_status/${invoiceId}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(requestData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showMessage(data.success, 'success');
+                    currentInvoiceModal.hide();
+                    // 刷新页面
+                    setTimeout(() => location.reload(), 1000);
+                } else {
+                    showMessage(data.error, 'error');
+                }
+            })
+            .catch(error => {
+                showMessage('操作失败，请重试', 'error');
+            });
+        });
+
+        // 查看发票详情
+        function viewInvoiceDetails(invoiceId) {
+            fetch(`/invoice_details/${invoiceId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showMessage(data.error, 'error');
+                        return;
+                    }
+                    
+                    // 填充详情模态框
+                    document.getElementById('detailInvoiceNumber').textContent = data.invoice_number;
+                    document.getElementById('detailSupplierName').textContent = data.supplier_name;
+                    document.getElementById('detailPurchaseDate').textContent = data.purchase_date;
+                    document.getElementById('detailAmount').textContent = '¥' + data.amount.toFixed(2);
+                    document.getElementById('detailDescription').textContent = data.description || '无描述';
+                    document.getElementById('detailUploader').textContent = data.uploader;
+                    document.getElementById('detailStatus').textContent = getStatusText(data.status);
+                    document.getElementById('detailReimbursementStatus').textContent = getReimbursementStatusText(data.reimbursement_status);
+                    document.getElementById('detailTags').textContent = data.tags || '无标签';
+                    document.getElementById('detailCreatedAt').textContent = data.created_at;
+                    document.getElementById('detailUpdatedAt').textContent = data.updated_at;
+                    
+                    // 处理拒绝原因显示
+                    const rejectionReasonContainer = document.getElementById('detailRejectionReasonContainer');
+                    const rejectionReason = document.getElementById('detailRejectionReason');
+                    if (data.status === 'rejected' && data.rejection_reason) {
+                        rejectionReason.textContent = data.rejection_reason;
+                        rejectionReasonContainer.style.display = 'block';
+                    } else {
+                        rejectionReasonContainer.style.display = 'none';
+                    }
+                    
+                    // 设置下载链接
+                    const downloadBtn = document.getElementById('detailDownloadBtn');
+                    if (data.file_path) {
+                        downloadBtn.href = `/download_invoice/${invoiceId}`;
+                        downloadBtn.style.display = 'inline-block';
+                    } else {
+                        downloadBtn.style.display = 'none';
+                    }
+                    
+                    // 显示模态框
+                    const modal = new bootstrap.Modal(document.getElementById('invoiceDetailModal'));
+                    modal.show();
+                })
+                .catch(error => {
+                    showMessage('获取发票详情失败', 'error');
+                });
+        }
+
+        // 获取状态文本
+        function getStatusText(status) {
+            const statusMap = {
+                'pending': '待审核',
+                'approved': '已通过',
+                'rejected': '已拒绝'
+            };
+            return statusMap[status] || status;
+        }
+
+        // 获取报销状态文本
+        function getReimbursementStatusText(status) {
+            const statusMap = {
+                'unreimbursed': '未报销',
+                'reimbursed': '已报销'
+            };
+            return statusMap[status] || status;
+        }
+
+        // 更新报销状态
+        document.querySelectorAll('.reimbursement-status').forEach(select => {
+            select.addEventListener('change', function() {
+                const invoiceId = this.dataset.invoiceId;
+                const reimbursementStatus = this.value;
+                
+                fetch(`/update_invoice_status/${invoiceId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        reimbursement_status: reimbursementStatus
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        showMessage('报销状态更新成功', 'success');
+                    // 更新原始值
+                        this.dataset.originalValue = reimbursementStatus;
+                    } else {
+                        showMessage(data.error, 'error');
+                        // 恢复原状态
+                        this.value = this.dataset.originalValue;
+                    }
+                })
+                .catch(error => {
+                    showMessage('更新失败，请重试', 'error');
+                    this.value = this.dataset.originalValue;
+                });
+            });
+            
+            // 初始化原始值
+            select.dataset.originalValue = select.value;
+        });
+
+        // 处理筛选表单提交
+        document.getElementById('filterForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(this);
+            const filterData = {
+                uploader_id: formData.get('uploader_id'),
+                start_date: formData.get('start_date'),
+                end_date: formData.get('end_date'),
+                tags: formData.get('tags'),
+                reimbursement_status: formData.get('reimbursement_status')
+            };
+            
+            fetch('/admin/summary_filter', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(filterData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    showMessage(data.error, 'error');
+                    return;
+                }
+                
+                // 更新表格
+                const tableBody = document.getElementById('summaryTableBody');
+                tableBody.innerHTML = '';
+                
+                if (data.length === 0) {
+                    tableBody.innerHTML = `
+                        <tr>
+                            <td colspan="9" class="text-center py-4">
+                                <i class="fas fa-search fa-2x text-muted mb-2"></i>
+                                <p class="text-muted mb-0">没有找到符合条件的发票</p>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    data.forEach(invoice => {
+                        const tagsHtml = invoice.tags ? 
+                            `<span class="badge bg-info">${invoice.tags}</span>` : 
+                            `<span class="text-muted">无标签</span>`;
+                        
+                        const reimbursementBadge = invoice.reimbursement_status === 'reimbursed' ?
+                            '<span class="badge bg-success">已报销</span>' :
+                            '<span class="badge bg-warning">未报销</span>';
+                        
+                        const downloadBtn = (invoice.file_path || invoice.file_url) ? 
+                            `<a href="/download_invoice/${invoice.id}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-download me-1"></i>下载
+                            </a>` : '';
+                        
+                        const row = `
+                            <tr>
+                                <td>${invoice.invoice_number}</td>
+                                <td>${invoice.supplier_name}</td>
+                                <td>${invoice.purchase_date}</td>
+                                <td>¥${invoice.amount.toFixed(2)}</td>
+                                <td>${invoice.uploader}</td>
+                                <td>${tagsHtml}</td>
+                                <td>${reimbursementBadge}</td>
+                                <td>${invoice.created_at}</td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn btn-sm btn-outline-info"
+                                                onclick="viewInvoiceDetails(${invoice.id})">
+                                            <i class="fas fa-eye me-1"></i>详情
+                                        </button>
+                                        ${downloadBtn}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                        tableBody.innerHTML += row;
+                    });
+                }
+                
+                showMessage(`找到 ${data.length} 条记录`, 'success');
+            })
+            .catch(error => {
+                showMessage('筛选失败，请重试', 'error');
+            });
+        });
+
+        // 显示消息提示
+        function showMessage(message, type) {
+            let alertClass, icon;
+            
+            if (type === 'success') {
+                alertClass = 'alert-success';
+                icon = 'fa-check-circle';
+            } else if (type === 'error') {
+                alertClass = 'alert-danger';
+                icon = 'fa-exclamation-circle';
+            } else {
+                alertClass = 'alert-info';
+                icon = 'fa-info-circle';
+            }
+            
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert ${alertClass} alert-dismissible fade show`;
+            alertDiv.innerHTML = `
+                <i class="fas ${icon} me-2"></i>${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.getElementById('messageContainer').appendChild(alertDiv);
+            
+            // 自动移除提示
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+        }
+
+        // 侧边栏标签切换
+        document.querySelectorAll('.sidebar .nav-link').forEach(link => {
+            link.addEventListener('click', function() {
+                document.querySelectorAll('.sidebar .nav-link').forEach(l => l.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+    </script>
+</body>
+</html>
